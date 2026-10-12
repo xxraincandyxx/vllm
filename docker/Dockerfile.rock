@@ -839,6 +839,8 @@ ENV MIOPEN_DEBUG_CONV_GEMM=0
 
 # Use legacy IPC mode for HSA to avoid GPU memory pinning issues with UCX rocm_ipc.
 # See: https://github.com/ROCm/rocm-libraries/issues/6266
+# CI-only (DKMS hosts): legacy IPC breaks hipIpcGetMemHandle on in-tree amdgpu
+# kernels (vllm#61055); do not set this in release images.
 ENV HSA_ENABLE_IPC_MODE_LEGACY=1
 ENV UCX_RMA_PPLN_ENABLE=y
 ENV UCX_ROCM_COPY_SIGPOOL_MAX_ELEMS=inf
@@ -973,9 +975,12 @@ COPY --from=export_vllm /benchmarks ${COMMON_WORKDIR}/vllm/benchmarks
 COPY --from=export_vllm /examples ${COMMON_WORKDIR}/vllm/examples
 COPY --from=export_vllm /docker ${COMMON_WORKDIR}/vllm/docker
 
-# Use legacy IPC mode for HSA to avoid GPU memory pinning issues with UCX rocm_ipc
+# HSA_ENABLE_IPC_MODE_LEGACY is deliberately NOT set: it forces the legacy KFD IPC
+# path, which only exists on DKMS amdgpu kernels and breaks hipIpcGetMemHandle (RCCL
+# P2P, custom all-reduce, CUDA-IPC sharing) on in-tree amdgpu hosts. Opt-in only,
+# via `docker run -e`, for the UCX rocm_ipc pinning leak on DKMS hosts.
 # See: https://github.com/ROCm/rocm-libraries/issues/6266
-ENV HSA_ENABLE_IPC_MODE_LEGACY=1
+#      https://github.com/vllm-project/vllm/issues/61055
 ENV UCX_RMA_PPLN_ENABLE=y
 ENV UCX_ROCM_COPY_SIGPOOL_MAX_ELEMS=inf
 

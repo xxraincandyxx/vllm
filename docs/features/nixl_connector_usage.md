@@ -34,6 +34,12 @@ export UCX_NET_DEVICES=all  # or specify network devices like "mlx5_0:1,mlx5_1:1
 !!! tip
     When using UCX as the transport backend, NCCL environment variables (like `NCCL_IB_HCA`, `NCCL_SOCKET_IFNAME`) are not applicable to NixlConnector, so configure UCX-specific environment variables instead of NCCL variables.
 
+#### ROCm: optional `HSA_ENABLE_IPC_MODE_LEGACY=1` workaround
+
+On ROCm hosts running the DKMS `amdgpu` driver, setting `HSA_ENABLE_IPC_MODE_LEGACY=1` (e.g. `docker run -e HSA_ENABLE_IPC_MODE_LEGACY=1 ...`) works around a UCX `rocm_ipc` issue where GPU memory stays permanently pinned after buffers are freed ([rocm-libraries#6266](https://github.com/ROCm/rocm-libraries/issues/6266)).
+
+Do not set it on hosts running the in-tree (stock kernel) `amdgpu` driver: the legacy IPC path relies on the `AMDKFD_IOC_IPC_EXPORT_HANDLE` ioctl, which only the DKMS driver implements. With it enabled there, every `hipIpcGetMemHandle` call fails, breaking RCCL P2P, vLLM's custom all-reduce, and CUDA-IPC tensor sharing ([vllm#61055](https://github.com/vllm-project/vllm/issues/61055)). The vLLM ROCm images therefore do not set it by default.
+
 #### Selecting a NIXL transport backend (plugin)
 
 NixlConnector can use different NIXL transport backends (plugins). By default, NixlConnector uses UCX as the transport backend.
